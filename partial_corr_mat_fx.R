@@ -34,7 +34,8 @@ for (i in 1:n) {                                # for each column of data = x
     }else{
       
       #pcor.fit <- psych::partial.r(data=dat,x=c(names(dat)[i],names(dat)[j]), y=names(dat)[k], method = "pearson", use = "pairwise.complete.obs")#, exact = FALSE) # Calculate correlation among variables in dat
-      pcor.fit<-parcor_ijk(dat[,i],dat[,j], dat[,k])[[1]]
+      pcor.fit<-parcor_ijk(dat[,i],dat[,j], dat[,k])#[[1]]
+      
       }
 
     #cor.matrix[i,j] <- round(pcor.fit$estimate,digits=2)# and place in matrix

@@ -126,7 +126,7 @@ finalmat<-function(dat1,#raw data
     for(jj in 1:nn){
       
       if (is.na(dat3)){
-      FinalCorrMatrix[ii,jj] = paste(dat1[ii,jj], dat2[ii,jj],
+      FinalCorrMatrix[ii,jj] = paste(round(dat1[ii,jj], 2), round(dat2[ii,jj], 2),
                                      sep ="; ")
       }else{
       FinalCorrMatrix[ii,jj] = paste(dat1[ii,jj], dat2[ii,jj], dat3[ii,jj],
