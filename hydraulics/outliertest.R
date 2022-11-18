@@ -24,17 +24,28 @@ library(outliers)
 data<-readxl::read_excel(here("data/EFM_Summer2022.xlsx"), 
                          sheet = "OSBS_EFMoutliertest")%>%
   rename(Kleaf_Tcorr=`Kleaf Tcorr`, Psileaf=`Lowest Psileaf`)
+data<-read.csv('test.csv')
+
 bin<-0.5 #0.5 MPa Psi_leaf bins
 
 # DixonTestPrep -----------------------------------------------------------
 
 (splist<-unique(data$Species))#list of unique species names for reference
 
-(qula<-data%>%#create df for Quercus laevis
-  filter(Species=="QULA")%>%
-  select(Psileaf, Kleaf_Tcorr)%>%#select  psi and K columns
-  arrange(Psileaf)%>%#arrange in increasing order based on the psi
-mutate(psi_bin= cut(Psileaf, breaks=c(0, 0.5,1,1.5,2,2.5,3,3.5,max(Psileaf)))))
+(acru<-data%>%#create df for Quercus laevis
+  filter(Species=="ACRU")%>%
+  select(Psi_lowest, K)%>%#select  psi and K columns
+  arrange(Psi_lowest))#%>%#arrange in increasing order based on the psi
+#mutate(psi_bin= cut(Psileaf, breaks=c(0, 0.5,1,1.5,2,2.5,3,3.5,max(Psileaf)))))
+
+acru_cut<-cut(acru$Psi_lowest,c(0,0.5,1.0,1.5,2.0,2.5,3.0,3.5,4.0), include.lowest = TRUE)
+acru$cut<-acru_cut
+
+bins<-unique(acru$cut)
+
+lapply(bins, function(x) {dixon.test(acru%>%filter(cut==x)%>%select(K))})
+
+
 
 quge<-data%>%#create df for Quercus laevis
   filter(Species=="QUGE")%>%

@@ -17,7 +17,7 @@ source(here('r_script',"r_fxs_update_MB_mb.R"))
 dd<-dd%>%rename(species=Species, psi=Psi_lowest, kl=K)%>%#rename var names to fit with the rest of the syntax below.
     mutate(data.type=rep(1,dim(dd)[1]))
 
-dd<-dd%>%select(!c(Individual,Leaf,site))
+dd<-dd%>%select(!c(Individual,Leaf,site))#this is specific to the analysis for NEON; vars can change
 #data prep
 dd$to_split = paste(dd$species, dd$data.type)
 aggregate(dd, by =list(dd$to_split), FUN=length) -> speciesN
@@ -61,6 +61,7 @@ which(is.na(as.numeric(modelfitting_results[,12]))=='TRUE' | is.na(as.numeric(mo
 write.csv(modelfitting_results, file = here('outputs',"Linear_fits.csv"))
 cat("Linear has ", length(problem_rows), "curve(s) with NAs: ", problem_rows)
 
+#generate a 1000 curves based on the standard error of the model parameters!!! 
 
 #Logistic
 #Declare the pdf file to hold the plots
