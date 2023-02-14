@@ -67,16 +67,17 @@ dixon_test.df <- do.call(rbind, dixon_test.list)
 
 vul.cur_dixon<-function(data,
                         breaks_by=0.5, # values to break of psi bins by 
-                        test_var=character(), # column name of conductance measurement
+                        test_var, # column name of conductance measurement
+                        psi_col="psi",
                         ...){ # additional options for dixon test function. See ?dixon.test for options
 
   df_wbins<-data %>% 
-  mutate(k_bins_numeric=cut(psi,
-                            breaks = seq(from=0, to=max(psi)+breaks_by, by=breaks_by), # break from psi=0 to the max value + 0.5 to cover the driest points.
+  mutate(k_bins_numeric=cut({{psi_col}},
+                            breaks = seq(from=0, to=max({{psi_col}})+breaks_by, by=breaks_by), # break from psi=0 to the max value + 0.5 to cover the driest points.
                             include.lowest = TRUE, 
                             labels=F),# instead of factor output vector on bin numbers
-         k_bins_factor=cut(psi,
-                           breaks = seq(from=0, to=max(psi)+breaks_by, by=breaks_by), # break from psi=0 to the max value + 0.5 to cover the driest points.
+         k_bins_factor=cut({{psi_col}},
+                           breaks = seq(from=0, to=max({{psi_col}})+breaks_by, by=breaks_by), # break from psi=0 to the max value + 0.5 to cover the driest points.
                            include.lowest = TRUE, ordered=TRUE))%>% # bins as factor and ordered%>% 
   
   group_by(k_bins_numeric)%>%
@@ -91,7 +92,14 @@ vul.cur_dixon<-function(data,
 dixon_test.list <- lapply(unique(df_wbins$k_bins_new), function(bin) {
   
   test <-
-    dixon.test(x = df_wbins[[test_var]][df_wbins$k_bins_new==bin], ...)#if you want to check the opposite as the chosen value, opposite = T
+    dixon.test(x = df_wbins[[{{test_var}}]][df_wbins$k_bins_new==bin], ...)#if you want to check the opposite as the chosen value, opposite = T
+  
+  IQR_bin <- IQR(df_wbins[[{{test_var}}]][df_wbins$k_bins_new==bin])
+  
+  Q1_Q3<-quantile(df_wbins[[{{test_var}}]][df_wbins$k_bins_new==bin], 
+                  probs=c(0.25,0.75))
+  upper_bound<-Q1_Q3[[2]] + (1.5 * IQR_bin)
+  lower_bound<-Q1_Q3[[1]] - (1.5 * IQR_bin)
   
   bin_asfactor<-df_wbins[df_wbins$k_bins_new==bin,]$k_bins_factor
   
@@ -103,6 +111,8 @@ dixon_test.list <- lapply(unique(df_wbins$k_bins_new), function(bin) {
     dqr_hyp = test$alternative,
     dqr_stat = test$statistic,
     dqr_pval = test$p.value, 
+    iqr_test.max = ifelse(max(df_wbins[[{{test_var}}]][df_wbins$k_bins_new==bin])>upper_bound,"Yes", "No"),
+    iqr_test.min =ifelse(min(df_wbins[[{{test_var}}]][df_wbins$k_bins_new==bin])<lower_bound,"Yes", "No"),
     row.names=NULL) # end output.df
   
   return(output.df)
@@ -120,3 +130,10 @@ vul.cur_dixon(gs_quag,
            breaks_by = 0.5, 
            test_var = "gs", 
            opposite=F)
+
+
+vul.cur_dixon(quru,
+              breaks_by = 0.5, 
+              test_var = "K", 
+              psi_col = Psi_lowest,
+              opposite=F)
