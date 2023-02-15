@@ -12,21 +12,27 @@ library(outliers) # dixon.test function
 
 # Data Management ---------------------------------------------------------
 #(gs_data <- read_csv("C:/Users/krazy/Downloads/gs_data.csv"))
-load(here("gs_data.rda"))
 
-gs_quag<-gs_data%>%# just Quercus agrifolia
-  filter(species=="quag")
-
+hf_quru<-hf%>%filter(species.site=="HF_QURU")
 # construct something to work with in the non-functional version. 
-df_bin<-gs_quag %>% 
-  mutate(k_bins_numeric=cut(psi,
-                    breaks = seq(from=0, to=max(psi)+0.5, by=0.5), # break from psi=0 to the max value + 0.5 to cover the driest points.
-                    include.lowest = TRUE, 
-                    labels=F),# instead of factor output vector on bin numbers
-         k_bins_factor=cut(psi,
-                            breaks = seq(from=0, to=max(psi)+0.5, by=0.5), # break from psi=0 to the max value + 0.5 to cover the driest points.
-                            include.lowest = TRUE,ordered=TRUE)) # bins as factor and ordered
-
+df_bin<-hf_quru %>% 
+  mutate(k_bins_numeric=cut(Psi_lowest,
+                            breaks = seq(from=0, to=max(Psi_lowest)+0.5, by=0.5), # break from psi=0 to the max value + 0.5 to cover the driest points.
+                            include.lowest = TRUE, 
+                            labels=F),# instead of factor output vector on bin numbers
+         k_bins_factor=cut(Psi_lowest,
+                           breaks = seq(from=0, to=max(Psi_lowest)+0.5, by=0.5), # break from psi=0 to the max value + 0.5 to cover the driest points.
+                           include.lowest = TRUE, ordered=TRUE), # bins as factor and ordered%>% 
+         max_bin=max(k_bins_numeric))%>% 
+  
+  group_by(k_bins_numeric)%>%
+  mutate(n_bybin=n(),
+         k_bins_new = ifelse(n_bybin<3 & k_bins_numeric==max_bin, k_bins_numeric-1, 
+                             ifelse(n_bybin<3,  k_bins_numeric+1, k_bins_numeric)))%>%
+  group_by(k_bins_new)%>% # group by the new bins
+  
+  mutate(k_bins_new=ifelse(n()<3, k_bins_new+1, 
+                           k_bins_new)) # values themselves are just to categorize the psi values 
 
 # search for bins that have less than 3 observations, add them to the next bin
 # this is run "twice": first to check in general, and a second time to make sure 
@@ -39,12 +45,12 @@ df_bin_newbins<- df_bin%>%
 
 # Non-functional version --------------------------------------------------
 
-dixon_test.list <- lapply(unique(df_bin_newbins$k_bins_new), function(bin) {
+dixon_test.list <- lapply(unique(df_bin$k_bins_new), function(bin) {
   
   test <-
-    dixon.test(x = df_bin_newbins[df_bin_newbins$k_bins_new==bin,]$gs, opposite = F)#if you want to check the opposite as the chosen value, opposite = T
+    dixon.test(x = df_bin[df_bin$k_bins_new==bin,]$K, opposite = F)#if you want to check the opposite as the chosen value, opposite = T
  
-  bin_asfactor<-df_bin_newbins[df_bin_newbins$k_bins_new==bin,]$k_bins_factor
+  bin_asfactor<-df_bin[df_bin$k_bins_new==bin,]$k_bins_factor
   
    output.df <- data.frame(
     bin_fac = ifelse(min(bin_asfactor)==max(bin_asfactor), 
@@ -69,6 +75,7 @@ vul.cur_dixon<-function(data,
                         breaks_by=0.5, # values to break of psi bins by 
                         test_var, # column name of conductance measurement
                         psi_col="psi",
+                        sps_col,
                         ...){ # additional options for dixon test function. See ?dixon.test for options
 
   df_wbins<-data %>% 
@@ -78,16 +85,20 @@ vul.cur_dixon<-function(data,
                             labels=F),# instead of factor output vector on bin numbers
          k_bins_factor=cut({{psi_col}},
                            breaks = seq(from=0, to=max({{psi_col}})+breaks_by, by=breaks_by), # break from psi=0 to the max value + 0.5 to cover the driest points.
-                           include.lowest = TRUE, ordered=TRUE))%>% # bins as factor and ordered%>% 
+                           include.lowest = TRUE, ordered=TRUE), # bins as factor and ordered%>% 
+         max_bin=max(k_bins_numeric))%>% 
   
-  group_by(k_bins_numeric)%>%
+    group_by(k_bins_numeric)%>%
   
-  mutate(k_bins_new=ifelse(n()<3, k_bins_numeric+1, k_bins_numeric))%>%
-  
+    mutate(n_bybin=n(),
+         k_bins_new = ifelse(n_bybin<3 & k_bins_numeric==max_bin, k_bins_numeric-1, 
+                             ifelse(n_bybin<3,  k_bins_numeric+1, k_bins_numeric)))%>% # bins as factor and ordered%>% 
+    
   group_by(k_bins_new)%>% # group by the new bins
   
-  mutate(k_bins_new=ifelse(n()<3, k_bins_new+1, k_bins_new)) # values themselves are just to categorize the psi values 
-
+    mutate(k_bins_new=ifelse(n()<3, k_bins_new+1, 
+                             k_bins_new)) # values themselves are just to categorize the psi values 
+  
 
 dixon_test.list <- lapply(unique(df_wbins$k_bins_new), function(bin) {
   
@@ -104,6 +115,7 @@ dixon_test.list <- lapply(unique(df_wbins$k_bins_new), function(bin) {
   bin_asfactor<-df_wbins[df_wbins$k_bins_new==bin,]$k_bins_factor
   
   output.df <- data.frame(
+    species = ifelse(is.na(sps_col), df_wbins$Species,df_wbins[[{{sps_col}}]]),
     bin_fac = ifelse(min(bin_asfactor)==max(bin_asfactor), 
                      substring(as.character(unique(bin_asfactor)), 2, 6), 
                      paste(substring(min(bin_asfactor), 2,2), substring(max(bin_asfactor),4,6), sep = ",")),# may have a problem if bin is on one that got changed?
@@ -132,8 +144,9 @@ vul.cur_dixon(gs_quag,
            opposite=F)
 
 
-vul.cur_dixon(quru,
+
+vul.cur_dixon(hf_quru,
               breaks_by = 0.5, 
               test_var = "K", 
-              psi_col = Psi_lowest,
+              psi_col = Psi_lowest, sps_col = "Species",
               opposite=F)
