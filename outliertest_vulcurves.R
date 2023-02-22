@@ -13,9 +13,9 @@ library(outliers) # dixon.test function
 # Data Management ---------------------------------------------------------
 #(gs_data <- read_csv("C:/Users/krazy/Downloads/gs_data.csv"))
 
-hf_quru<-hf%>%filter(species.site=="HF_QURU")
+pb_qupr<-pb%>%filter(species.site=="PFS_QUPR")
 # construct something to work with in the non-functional version. 
-df_bin<-hf_quru %>% 
+df_bin<-pb_qupr %>% 
   mutate(k_bins_numeric=cut(Psi_lowest,
                             breaks = seq(from=0, to=max(Psi_lowest)+0.5, by=0.5), # break from psi=0 to the max value + 0.5 to cover the driest points.
                             include.lowest = TRUE, 
@@ -31,17 +31,17 @@ df_bin<-hf_quru %>%
                              ifelse(n_bybin<3,  k_bins_numeric+1, k_bins_numeric)))%>%
   group_by(k_bins_new)%>% # group by the new bins
   
-  mutate(k_bins_new=ifelse(n()<3, k_bins_new+1, 
-                           k_bins_new)) # values themselves are just to categorize the psi values 
+  mutate(k_bins_new=ifelse(n()<3& k_bins_new==max(k_bins_new), k_bins_new-1, 
+                           ifelse(n()<3, k_bins_new+1, k_bins_new))) # values themselves are just to categorize the psi values 
 
 # search for bins that have less than 3 observations, add them to the next bin
 # this is run "twice": first to check in general, and a second time to make sure 
 # that the new bins also do not have less than 3 observations. 
-df_bin_newbins<- df_bin%>% 
-  group_by(k_bins_numeric)%>%
-  mutate(k_bins_new=ifelse(n()<3, k_bins_numeric+1, k_bins_numeric))%>%
-  group_by(k_bins_new)%>% # group by the new bins
-  mutate(k_bins_new=ifelse(n()<3, k_bins_new+1, k_bins_new)) # values themselves are just to categorize the psi values 
+# df_bin_newbins<- df_bin%>% 
+#   group_by(k_bins_numeric)%>%
+#   mutate(k_bins_new=ifelse(n()<3, k_bins_numeric+1, k_bins_numeric))%>%
+#   group_by(k_bins_new)%>% # group by the new bins
+#   mutate(k_bins_new=ifelse(n()<3, k_bins_new+1, k_bins_new)) # values themselves are just to categorize the psi values 
 
 # Non-functional version --------------------------------------------------
 
@@ -96,9 +96,8 @@ vul.cur_dixon<-function(data,
     
   group_by(k_bins_new)%>% # group by the new bins
   
-    mutate(k_bins_new=ifelse(n()<3, k_bins_new+1, 
-                             k_bins_new)) # values themselves are just to categorize the psi values 
-  
+    mutate(k_bins_new=ifelse(n()<3& k_bins_new==max(k_bins_new), k_bins_new-1, 
+                             ifelse(n()<3, k_bins_new+1, k_bins_new)))
 
 dixon_test.list <- lapply(unique(df_wbins$k_bins_new), function(bin) {
   
@@ -123,6 +122,7 @@ dixon_test.list <- lapply(unique(df_wbins$k_bins_new), function(bin) {
     dqr_hyp = test$alternative,
     dqr_stat = test$statistic,
     dqr_pval = test$p.value, 
+    dqr_outlier = ifelse(test$p.value<0.05, "outlier", "not_outlier"),
     iqr_test.max = ifelse(max(df_wbins[[{{test_var}}]][df_wbins$k_bins_new==bin])>upper_bound,"Yes", "No"),
     iqr_test.min =ifelse(min(df_wbins[[{{test_var}}]][df_wbins$k_bins_new==bin])<lower_bound,"Yes", "No"),
     row.names=NULL) # end output.df
