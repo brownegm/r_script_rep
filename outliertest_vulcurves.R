@@ -13,7 +13,7 @@ library(outliers) # dixon.test function
 # # Data Management ---------------------------------------------------------
 # #(gs_data <- read_csv("C:/Users/krazy/Downloads/gs_data.csv"))
 # 
-pb_qupr<-hf%>%filter(species.site=="HF_QURU")
+pb_qupr<-osbs%>%filter(species.site=="OSBS_PIPA")
 # construct something to work with in the non-functional version.
 df_bin<-pb_qupr %>%
   mutate(k_bins_numeric=cut(Psi_lowest,
@@ -29,11 +29,14 @@ df_bin<-pb_qupr %>%
   mutate(n_bybin=n(),
          k_bins_new = ifelse(n_bybin<3 & k_bins_numeric==max_bin, k_bins_numeric-1,
                              ifelse(n_bybin<3,  k_bins_numeric+1, k_bins_numeric)))%>%
+  ungroup()%>%
+  mutate(max_k_bins_new=max(k_bins_new), .before = k_bins_new)%>%
   group_by(k_bins_new)%>% # group by the new bins
-
-  mutate(k_bins_new=ifelse(n()<3 & k_bins_new==max(k_bins_new), k_bins_new-1,
-                           ifelse(n()<3, k_bins_new+1, k_bins_new))) # values themselves are just to categorize the psi values
-
+  mutate(n_bybin=n(),
+         k_bins_new2=ifelse(n_bybin<3 & k_bins_new==max_k_bins_new, 
+                           k_bins_new-1,
+                           ifelse(n_bybin<3, k_bins_new + 1, k_bins_new))) # values themselves are just to categorize the psi values
+ 
 # # search for bins that have less than 3 observations, add them to the next bin
 # # this is run "twice": first to check in general, and a second time to make sure 
 # # that the new bins also do not have less than 3 observations. 
@@ -88,16 +91,26 @@ vul.cur_dixon<-function(data,
                            include.lowest = TRUE, ordered=TRUE), # bins as factor and ordered%>% 
          max_bin=max(k_bins_numeric))%>% 
   
-    group_by(k_bins_numeric)%>%
-  
-    mutate(n_bybin=n(),
-         k_bins_new = ifelse(n_bybin<3 & k_bins_numeric==max_bin, k_bins_numeric-1, 
-                             ifelse(n_bybin<3,  k_bins_numeric+1, k_bins_numeric)))%>% # bins as factor and ordered%>% 
-    
-  group_by(k_bins_new)%>% # group by the new bins
-  
-    mutate(k_bins_new=ifelse(n()<3& k_bins_new==max(k_bins_new), k_bins_new-1, 
-                             ifelse(n()<3, k_bins_new+1, k_bins_new)))
+    group_by(k_bins_numeric) %>%
+    mutate(
+      n_bybin = n(),
+      k_bins_new = ifelse(
+        n_bybin < 3 & k_bins_numeric == max_bin,
+        k_bins_numeric - 1,
+        ifelse(n_bybin < 3,  k_bins_numeric + 1, k_bins_numeric)
+      )
+    ) %>%
+    ungroup() %>%
+    mutate(max_k_bins_new = max(k_bins_new), .before = k_bins_new) %>%
+    group_by(k_bins_new) %>% # group by the new bins
+    mutate(
+      n_bybin = n(),
+      k_bins_new = ifelse(
+        n_bybin < 3 & k_bins_new == max_k_bins_new,
+        k_bins_new - 1,
+        ifelse(n_bybin < 3, k_bins_new + 1, k_bins_new)
+      )
+    )
 
 dixon_test.list <- lapply(unique(df_wbins$k_bins_new), function(bin) {
   
