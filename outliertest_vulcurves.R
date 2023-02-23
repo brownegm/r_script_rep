@@ -13,27 +13,27 @@ library(outliers) # dixon.test function
 # # Data Management ---------------------------------------------------------
 # #(gs_data <- read_csv("C:/Users/krazy/Downloads/gs_data.csv"))
 # 
-# pb_qupr<-pb%>%filter(species.site=="PFS_QUPR")
-# # construct something to work with in the non-functional version. 
-# df_bin<-pb_qupr %>% 
-#   mutate(k_bins_numeric=cut(Psi_lowest,
-#                             breaks = seq(from=0, to=max(Psi_lowest)+0.5, by=0.5), # break from psi=0 to the max value + 0.5 to cover the driest points.
-#                             include.lowest = TRUE, 
-#                             labels=F),# instead of factor output vector on bin numbers
-#          k_bins_factor=cut(Psi_lowest,
-#                            breaks = seq(from=0, to=max(Psi_lowest)+0.5, by=0.5), # break from psi=0 to the max value + 0.5 to cover the driest points.
-#                            include.lowest = TRUE, ordered=TRUE), # bins as factor and ordered%>% 
-#          max_bin=max(k_bins_numeric))%>% 
-#   
-#   group_by(k_bins_numeric)%>%
-#   mutate(n_bybin=n(),
-#          k_bins_new = ifelse(n_bybin<3 & k_bins_numeric==max_bin, k_bins_numeric-1, 
-#                              ifelse(n_bybin<3,  k_bins_numeric+1, k_bins_numeric)))%>%
-#   group_by(k_bins_new)%>% # group by the new bins
-#   
-#   mutate(k_bins_new=ifelse(n()<3& k_bins_new==max(k_bins_new), k_bins_new-1, 
-#                            ifelse(n()<3, k_bins_new+1, k_bins_new))) # values themselves are just to categorize the psi values 
-# 
+pb_qupr<-hf%>%filter(species.site=="HF_QURU")
+# construct something to work with in the non-functional version.
+df_bin<-pb_qupr %>%
+  mutate(k_bins_numeric=cut(Psi_lowest,
+                            breaks = seq(from=0, to=max(Psi_lowest)+0.5, by=0.5), # break from psi=0 to the max value + 0.5 to cover the driest points.
+                            include.lowest = TRUE,
+                            labels=F),# instead of factor output vector on bin numbers
+         k_bins_factor=cut(Psi_lowest,
+                           breaks = seq(from=0, to=max(Psi_lowest)+0.5, by=0.5), # break from psi=0 to the max value + 0.5 to cover the driest points.
+                           include.lowest = TRUE, ordered=TRUE), # bins as factor and ordered%>%
+         max_bin=max(k_bins_numeric))%>%
+
+  group_by(k_bins_numeric)%>%
+  mutate(n_bybin=n(),
+         k_bins_new = ifelse(n_bybin<3 & k_bins_numeric==max_bin, k_bins_numeric-1,
+                             ifelse(n_bybin<3,  k_bins_numeric+1, k_bins_numeric)))%>%
+  group_by(k_bins_new)%>% # group by the new bins
+
+  mutate(k_bins_new=ifelse(n()<3 & k_bins_new==max(k_bins_new), k_bins_new-1,
+                           ifelse(n()<3, k_bins_new+1, k_bins_new))) # values themselves are just to categorize the psi values
+
 # # search for bins that have less than 3 observations, add them to the next bin
 # # this is run "twice": first to check in general, and a second time to make sure 
 # # that the new bins also do not have less than 3 observations. 
@@ -108,6 +108,7 @@ dixon_test.list <- lapply(unique(df_wbins$k_bins_new), function(bin) {
   
   Q1_Q3<-quantile(df_wbins[[{{test_var}}]][df_wbins$k_bins_new==bin], 
                   probs=c(0.25,0.75))
+  
   upper_bound<-Q1_Q3[[2]] + (1.5 * IQR_bin)
   lower_bound<-Q1_Q3[[1]] - (1.5 * IQR_bin)
   
